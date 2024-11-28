@@ -4,6 +4,7 @@ import openai
 from dotenv import load_dotenv  
 import os  
 
+
 # Load OpenAI API key from .env file
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -20,19 +21,9 @@ def extract_transcript(video_url):
         else:
             return None, "Invalid YouTube URL format."
 
-        # Fetch available transcripts
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-        
-        # Check for transcripts in English, German, or Dutch
-        try:
-            transcript = transcript_list.find_transcript(['en', 'de', 'nl'])
-        except Exception:
-            # Fallback to auto-generated transcripts in English, German, or Dutch
-            transcript = transcript_list.find_generated_transcript(['en', 'de', 'nl'])
-
-        # Fetch the transcript text
-        transcript_data = transcript.fetch()
-        full_text = " ".join([item['text'] for item in transcript_data])
+        # Fetch transcript
+        transcript = YouTubeTranscriptApi.get_transcript(video_id)
+        full_text = " ".join([item['text'] for item in transcript])
         return video_id, full_text
     except Exception as e:
         return None, f"Error: {str(e)}"
@@ -79,23 +70,18 @@ def summarize_text(transcript, format="Bullet Points", length=250, difficulty="B
 
             Here's the content to summarize:
             """
-        }
-
-        # Build the prompt
-        prompt = f"{difficulty_prompts[difficulty]}\n\nSummarize the following text in {format} format within approximately {length} tokens, ensuring it is a complete and meaningful summary:\n\n{transcript}"
+}
+        prompt = f"{difficulty_prompts[difficulty]}\n\nSummarize the following text in {format} format within {length} words:\n\n{transcript}"
         
-        # Call OpenAI API
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",  # Use "gpt-4" if needed
+            model="gpt-3.5-turbo",  # or "gpt-4" if available
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that summarizes text."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=length,  # Ensure max tokens match the length setting
+            max_tokens=min(length, 4096),
             temperature=0.7
         )
-        
-        # Return the complete summary
         return response.choices[0].message["content"].strip()
     except Exception as e:
         return f"Error: {str(e)}"
@@ -133,7 +119,7 @@ st.title("YouTube Transcript Summarizer")
 
 # Sidebar for Summary Settings
 st.sidebar.header("Summary Settings")
-summary_length = st.sidebar.slider("Length Summary", min_value=250, max_value=1500, value=250, step=50)
+summary_length = st.sidebar.slider("Length Summary", min_value=50, max_value=2500, value=200, step=50)
 summary_format = st.sidebar.radio("Format", ["Bullet Points", "Paragraph"])
 difficulty_level = st.sidebar.selectbox("Difficulty Level", ["Beginner-Friendly", "Intermediate", "Advanced/Technical"])
 target_language = st.sidebar.selectbox("Translate Summary to:", ["None", "English", "German", "Dutch"])

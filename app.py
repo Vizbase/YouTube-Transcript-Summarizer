@@ -34,7 +34,8 @@ def truncate_transcript(transcript, max_length=10000):
     return transcript[:max_length]
 
 # Function to summarize transcript
-def summarize_text(transcript, format="Bullet Points", length=250, difficulty="Beginner-Friendly"):
+# Function to summarize transcript
+def summarize_text(transcript, format="Bullet Points", length=200, difficulty="Beginner-Friendly"):
     """Summarize the transcript using OpenAI's ChatCompletion API."""
     try:
         # Customize the prompt based on difficulty level
@@ -70,7 +71,9 @@ def summarize_text(transcript, format="Bullet Points", length=250, difficulty="B
 
             Here's the content to summarize:
             """
-}
+        }
+        # Adjust the length to include buffer for completion
+        adjusted_length = length + 100  # Add buffer for smoother completion
         prompt = f"{difficulty_prompts[difficulty]}\n\nSummarize the following text in {format} format within {length} words:\n\n{transcript}"
         
         response = openai.ChatCompletion.create(
@@ -79,7 +82,7 @@ def summarize_text(transcript, format="Bullet Points", length=250, difficulty="B
                 {"role": "system", "content": "You are a helpful assistant that summarizes text."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=min(length, 4096),
+            max_tokens=min(adjusted_length, 4096),  # Adjusted length for smooth completions
             temperature=0.7
         )
         return response.choices[0].message["content"].strip()
